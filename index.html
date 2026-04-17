@@ -6,13 +6,13 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/Draggable.min.js"></script>
 <style>
+:root{--cs:1}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#2d6a4f;font-family:"Segoe UI",sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden;}
 
 #ui{width:100%;max-width:720px;padding:16px 16px 0;display:flex;flex-direction:column;align-items:center;gap:8px;}
-
-#ui h1{color:#fff;font-size:24px;font-weight:700;text-align:center;}
-#ui p#instruction{color:#fff;font-size:14px;text-align:center;min-height:20px;padding:0 8px;}
+#ui h1{color:#fff;font-size:clamp(18px,5vw,24px);font-weight:700;text-align:center;}
+#ui p#instruction{color:#fff;font-size:clamp(12px,3.5vw,14px);text-align:center;min-height:20px;padding:0 8px;}
 #picks-row{display:flex;gap:8px;align-items:center;}
 #dots{display:flex;gap:5px;}
 .pick-dot{width:20px;height:28px;border-radius:4px;background:#fff;border:2px solid #1d4ed8;display:flex;align-items:center;justify-content:center;font-size:12px;color:#1d4ed8;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.2);transition:opacity .3s,filter .3s;}
@@ -23,25 +23,25 @@ body{background:#2d6a4f;font-family:"Segoe UI",sans-serif;min-height:100vh;displ
 #deck-area{position:absolute;bottom:0;left:0;right:0;height:240px;display:flex;justify-content:center;align-items:flex-end;}
 #revealed-area{position:absolute;top:0;left:0;right:0;height:180px;pointer-events:none;}
 
-.card{position:absolute;width:84px;height:118px;border-radius:10px;cursor:pointer;transform-origin:bottom center;transform-style:preserve-3d;user-select:none;-webkit-tap-highlight-color:transparent;}
+.card{position:absolute;width:calc(84px * var(--cs));height:calc(118px * var(--cs));border-radius:10px;cursor:pointer;transform-origin:bottom center;transform-style:preserve-3d;user-select:none;-webkit-tap-highlight-color:transparent;}
 .card.picked{cursor:default;pointer-events:none}
 .card.highlighted .card-back{box-shadow:0 0 18px rgba(37,99,235,.75)!important;}
 .card-inner{width:100%;height:100%;position:relative;transform-style:preserve-3d;transition:transform .6s cubic-bezier(.4,0,.2,1);}
 .card.flipped .card-inner{transform:rotateY(180deg)}
 .card-front,.card-back{position:absolute;width:100%;height:100%;border-radius:10px;backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px;}
 .card-back{background:repeating-linear-gradient(45deg,#2563eb,#2563eb 10px,#1d4ed8 10px,#1d4ed8 20px);border:2px solid #93c5fd;box-shadow:0 4px 14px rgba(37,99,235,.3);}
-.card-back-pip{width:60%;height:60%;border:2px solid #93c5fd;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#bfdbfe;font-size:26px;}
+.card-back-pip{width:60%;height:60%;border:2px solid #93c5fd;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#bfdbfe;font-size:calc(26px * var(--cs));}
 .card-front{background:#fff;border:2px solid #2563eb;transform:rotateY(180deg);box-shadow:0 4px 14px rgba(0,0,0,.12);text-align:center;gap:4px;}
-.prize-icon{font-size:22px;line-height:1}
-.prize-name{font-size:10px;font-weight:700;color:#1a1a2e;line-height:1.25;text-align:center}
-.prize-val{font-size:10px;color:#2563eb;font-weight:600}
-.prize-extra{font-size:9px;color:#16a34a;font-weight:700;margin-top:2px;line-height:1.2}
+.prize-icon{font-size:calc(22px * var(--cs));line-height:1}
+.prize-name{font-size:calc(10px * var(--cs));font-weight:700;color:#1a1a2e;line-height:1.25;text-align:center}
+.prize-val{font-size:calc(10px * var(--cs));color:#2563eb;font-weight:600}
+.prize-extra{font-size:calc(9px * var(--cs));color:#16a34a;font-weight:700;margin-top:2px;line-height:1.2}
 
-.rev-card{position:absolute;border-radius:12px;background:#fff;border:2px solid #2563eb;box-shadow:0 6px 24px rgba(37,99,235,.2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px;text-align:center;pointer-events:none;opacity:0;width:100px;height:140px;}
-.rev-icon{font-size:26px;line-height:1}
-.rev-name{font-size:11px;font-weight:700;color:#1a1a2e;line-height:1.3}
-.rev-val{font-size:11px;color:#2563eb;font-weight:600}
-.rev-extra{font-size:10px;color:#16a34a;font-weight:700;margin-top:2px}
+.rev-card{position:absolute;border-radius:12px;background:#fff;border:2px solid #2563eb;box-shadow:0 6px 24px rgba(37,99,235,.2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px;text-align:center;pointer-events:none;opacity:0;width:calc(100px * var(--cs));height:calc(140px * var(--cs));}
+.rev-icon{font-size:calc(26px * var(--cs));line-height:1}
+.rev-name{font-size:calc(11px * var(--cs));font-weight:700;color:#1a1a2e;line-height:1.3}
+.rev-val{font-size:calc(11px * var(--cs));color:#2563eb;font-weight:600}
+.rev-extra{font-size:calc(10px * var(--cs));color:#16a34a;font-weight:700;margin-top:2px}
 .card:not(.picked):not(.highlighted):hover .card-back{box-shadow:0 0 16px rgba(37,99,235,.6);}
 
 #log-area{width:100%;max-width:720px;padding:0 16px 20px;margin-top:4px;}
@@ -64,16 +64,6 @@ body{background:#2d6a4f;font-family:"Segoe UI",sans-serif;min-height:100vh;displ
 #modal-btn:hover{background:#1d4ed8;}
 
 @media(max-width:500px){
-  #ui h1{font-size:20px}
-  #stage{height:280px}
-  #deck-area{height:200px}
-  #revealed-area{height:150px}
-  .card{width:62px;height:87px;}
-  .card-back-pip{font-size:18px}
-  .rev-card{width:80px;height:112px;}
-  .rev-icon{font-size:20px}
-  .rev-name,.rev-val{font-size:9px}
-  .rev-extra{font-size:8px}
   #modal-box{padding:24px 16px}
   #modal-box h2{font-size:18px}
 }
@@ -130,6 +120,30 @@ const PRIZES=[
 
 const isTouchDevice=()=>window.matchMedia("(hover:none)").matches;
 let picksRemaining=2,totalPicks=2,pickCount=0,gameOver=false,wonPrizes=[],cardData=[],highlightedCard=null;
+let layout={scale:1,spread:150,stageH:340,deckH:240,revAreaH:180,revW:100,revCardH:140};
+
+function getLayout(){
+  const vw=window.innerWidth;
+  const scale=vw<=360?0.63:vw<=414?0.73:vw<=480?0.81:vw<=600?0.91:1;
+  const spread=vw<=360?112:vw<=414?122:vw<=480?132:vw<=600?142:150;
+  return{
+    scale,
+    spread,
+    stageH:Math.round(340*scale),
+    deckH:Math.round(240*scale),
+    revAreaH:Math.round(180*scale),
+    revW:Math.round(100*scale),
+    revCardH:Math.round(140*scale),
+  };
+}
+
+function applyLayout(){
+  layout=getLayout();
+  document.documentElement.style.setProperty('--cs',layout.scale);
+  document.getElementById('stage').style.height=layout.stageH+'px';
+  document.getElementById('deck-area').style.height=layout.deckH+'px';
+  document.getElementById('revealed-area').style.height=layout.revAreaH+'px';
+}
 
 function shuffle(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;}
 
@@ -174,8 +188,8 @@ function repositionRevealedCards(){
   const n=cards.length;
   if(!n)return;
   const stageW=document.getElementById("stage").getBoundingClientRect().width;
-  const cardW=cards[0].offsetWidth||100;
-  const gap=10;
+  const cardW=cards[0].offsetWidth||layout.revW;
+  const gap=Math.round(10*layout.scale);
   const totalW=n*cardW+(n-1)*gap;
   const startX=stageW/2-totalW/2;
   cards.forEach((rc,i)=>gsap.to(rc,{left:startX+i*(cardW+gap)+"px",top:"6px",duration:0.35,ease:"power2.out"}));
@@ -187,8 +201,8 @@ function spawnRevealedCard(prize,deckCardEl){
   const rc=document.createElement("div");
   rc.className="rev-card";
   rc.innerHTML=`<div class="rev-icon">${prize.icon}</div><div class="rev-name">${prize.label}${prize.sub?`<br><span class="rev-val">${prize.sub}</span>`:""}</div>${prize.extra?`<div class="rev-extra">+ EXTRA PICK!</div>`:""}`;
-  rc.style.left=(deckRect.left-stageRect.left+deckRect.width/2-50)+"px";
-  rc.style.top=(deckRect.top-stageRect.top+deckRect.height/2-70)+"px";
+  rc.style.left=(deckRect.left-stageRect.left+deckRect.width/2-layout.revW/2)+"px";
+  rc.style.top=(deckRect.top-stageRect.top+deckRect.height/2-layout.revCardH/2)+"px";
   document.getElementById("stage").appendChild(rc);
   gsap.fromTo(rc,{opacity:0,rotation:gsap.getProperty(deckCardEl,"rotation"),scale:0.7},{opacity:1,rotation:0,scale:1,duration:0.55,ease:"power3.out",onComplete:repositionRevealedCards});
   repositionRevealedCards();
@@ -196,7 +210,8 @@ function spawnRevealedCard(prize,deckCardEl){
 
 function liftCard(cardEl,angle){
   const rad=(angle-90)*Math.PI/180;
-  gsap.to(cardEl,{x:Math.cos(rad)*22,y:Math.sin(rad)*22,duration:0.2,ease:"power2.out"});
+  const dist=Math.round(38*layout.scale);
+  gsap.to(cardEl,{x:Math.cos(rad)*dist,y:Math.sin(rad)*dist,duration:0.2,ease:"power2.out"});
 }
 function lowerCard(cardEl){gsap.to(cardEl,{x:0,y:0,duration:0.2,ease:"power2.in"});}
 
@@ -228,18 +243,17 @@ function init(){
   document.getElementById("log").innerHTML="";
   setInstruction("Pick 2 Cards and Win their Prizes!");
   document.querySelectorAll(".rev-card").forEach(e=>e.remove());
+  applyLayout();
   const deckArea=document.getElementById("deck-area");
   deckArea.innerHTML="";
   cardData=[];
   const prizes=shuffle(PRIZES);
   const total=prizes.length;
-  const mobile=window.innerWidth<=500;
-  const spread=mobile?110:150;
-  const startAngle=-spread/2;
+  const startAngle=-layout.spread/2;
   prizes.forEach((prize,i)=>{
     const card=document.createElement("div");
     card.className="card";
-    const angle=startAngle+(spread/(total-1))*i;
+    const angle=startAngle+(layout.spread/(total-1))*i;
     gsap.set(card,{x:0,y:0,rotation:angle,transformOrigin:"bottom center"});
     const inner=document.createElement("div");inner.className="card-inner";
     const back=document.createElement("div");back.className="card-back";back.innerHTML=`<div class="card-back-pip">♠</div>`;
@@ -262,6 +276,15 @@ function init(){
   });
   updateDots();
 }
+
+let resizeTimer;
+window.addEventListener('resize',()=>{
+  clearTimeout(resizeTimer);
+  resizeTimer=setTimeout(()=>{
+    if(pickCount===0)init();
+    else applyLayout();
+  },200);
+});
 
 init();
 </script>
