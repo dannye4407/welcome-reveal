@@ -210,7 +210,7 @@ function spawnRevealedCard(prize,deckCardEl){
 
 function liftCard(cardEl,angle){
   const rad=(angle-90)*Math.PI/180;
-  const dist=Math.round(38*layout.scale);
+  const dist=Math.round(58*layout.scale);
   gsap.to(cardEl,{x:Math.cos(rad)*dist,y:Math.sin(rad)*dist,duration:0.2,ease:"power2.out"});
 }
 function lowerCard(cardEl){gsap.to(cardEl,{x:0,y:0,duration:0.2,ease:"power2.in"});}
