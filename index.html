@@ -1067,6 +1067,23 @@ init();
 // Synthesized sound effects via Web Audio API
 (function () {
   let _ctx = null;
+
+  function unlock() {
+    if (!_ctx) {
+      try { _ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
+    }
+    // Play a zero-length silent buffer — required to unlock audio on iOS Safari
+    const buf = _ctx.createBuffer(1, 1, 22050);
+    const src = _ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(_ctx.destination);
+    src.start(0);
+    if (_ctx.state === 'suspended') _ctx.resume();
+  }
+  ['touchstart', 'touchend', 'click'].forEach(ev =>
+    document.addEventListener(ev, unlock, { once: true, passive: true })
+  );
+
   function ctx() {
     if (!_ctx) {
       try { _ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
