@@ -614,6 +614,74 @@ body{background-color:#2a6347;background-image:radial-gradient(ellipse at 50% 25
     opacity: 0;
   }
 }
+
+/* Make prize text on card faces easier to read */
+.pick-dot.filled .pd-name {
+  font-size: 13px;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  padding: 0 4px;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+.pick-dot.filled .pd-icon {
+  font-size: 20px;
+  line-height: 1;
+  margin-bottom: 5px;
+}
+
+/* +1 PICK badge that flies from the extra-pick card down to the picks-remaining label */
+#picks-row { position: relative; overflow: visible; }
+
+.plus-one-badge {
+  position: absolute;
+  left: 50%;
+  bottom: -4px;
+  transform: translate(-50%, -90px) scale(0.6);
+  padding: 7px 16px 7px 14px;
+  border-radius: 999px;
+  font-family: 'Limelight', serif;
+  font-size: 15px;
+  letter-spacing: 0.14em;
+  color: #2a0a14;
+  background: linear-gradient(180deg, #FFE7A1 0%, #FFC960 55%, #E59A2C 100%);
+  border: 1.5px solid #FFE9B0;
+  box-shadow:
+    0 0 0 2px rgba(255, 77, 141, 0.95),
+    0 10px 24px rgba(255, 77, 141, 0.55),
+    0 0 28px rgba(255, 201, 96, 0.85),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 60;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+  animation: plusOneFly 1300ms cubic-bezier(.2, .8, .25, 1) forwards;
+}
+
+.plus-one-badge .pob-star {
+  display: inline-block;
+  margin-right: 6px;
+  color: #C12170;
+  text-shadow: 0 0 6px rgba(255, 77, 141, 0.8);
+}
+
+@keyframes plusOneFly {
+  0%   { opacity: 0; transform: translate(-50%, -90px) scale(0.6); }
+  15%  { opacity: 1; transform: translate(-50%, -70px) scale(1.15); }
+  55%  { opacity: 1; transform: translate(-50%, -18px) scale(1.05); }
+  80%  { opacity: 1; transform: translate(-50%, 4px)  scale(1.00); }
+  100% { opacity: 0; transform: translate(-50%, 8px)  scale(0.95); }
+}
+
+#picks-label.pl-bump { animation: plBump 700ms ease-out; }
+@keyframes plBump {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.14); color: #FF4D8D; text-shadow: 0 0 14px rgba(255, 77, 141, 0.75); }
+  100% { transform: scale(1); }
+}
 </style>
 </head>
 <body>
@@ -952,6 +1020,42 @@ init();
     if (last) markExtra(last);
   });
   obs.observe(instructionEl, { childList: true, characterData: true, subtree: true });
+})();
+
+// +1 PICK badge — visual only, no game logic changes
+(function () {
+  function firePlusOneBadge() {
+    const row = document.getElementById('picks-row');
+    if (!row) return;
+    row.querySelectorAll('.plus-one-badge').forEach(el => el.remove());
+
+    const b = document.createElement('div');
+    b.className = 'plus-one-badge';
+    b.innerHTML = '<span class="pob-star">+</span>1 PICK';
+    row.appendChild(b);
+
+    const label = document.getElementById('picks-label');
+    if (label) {
+      setTimeout(() => {
+        label.classList.remove('pl-bump');
+        void label.offsetWidth;
+        label.classList.add('pl-bump');
+      }, 750);
+    }
+
+    setTimeout(() => b.remove(), 1400);
+  }
+
+  const instr = document.getElementById('instruction');
+  if (instr) {
+    const obs = new MutationObserver(() => {
+      const t = (instr.textContent || '').toLowerCase();
+      if (t.includes('extra pick awarded')) {
+        firePlusOneBadge();
+      }
+    });
+    obs.observe(instr, { childList: true, characterData: true, subtree: true });
+  }
 })();
 </script>
 </body>
