@@ -549,6 +549,71 @@ body{background-color:#2a6347;background-image:radial-gradient(ellipse at 50% 25
   position: relative;
   z-index: 1;
 }
+
+/* Extra-pick prize slot: pink/gold pulsing glow + ribbon */
+#ui .pick-dot.filled.is-extra {
+  border-color: rgba(255, 100, 170, 0.85);
+  box-shadow:
+    0 0 0 2px rgba(184, 115, 20, 0.35) inset,
+    0 6px 18px rgba(0, 0, 0, 0.35),
+    0 0 0 3px rgba(255, 100, 170, 0.35),
+    0 0 28px rgba(255, 80, 140, 0.55);
+  animation: extraGlow 1.8s ease-in-out infinite;
+  overflow: visible;
+  padding-bottom: 18px;
+}
+@keyframes extraGlow {
+  0%, 100% {
+    box-shadow:
+      0 0 0 2px rgba(184, 115, 20, 0.35) inset,
+      0 6px 18px rgba(0, 0, 0, 0.35),
+      0 0 0 3px rgba(255, 100, 170, 0.35),
+      0 0 28px rgba(255, 80, 140, 0.55);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px rgba(184, 115, 20, 0.35) inset,
+      0 6px 18px rgba(0, 0, 0, 0.35),
+      0 0 0 3px rgba(255, 130, 190, 0.55),
+      0 0 40px rgba(255, 80, 140, 0.75);
+  }
+}
+
+/* Ribbon */
+#ui .pick-dot .extra-ribbon {
+  position: absolute;
+  left: 50%;
+  bottom: -10px;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, #FF4D8D 0%, #C12170 100%);
+  color: #fff;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 800;
+  font-size: 9px;
+  letter-spacing: 0.6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45), 0 0 12px rgba(255, 80, 140, 0.7);
+  text-transform: uppercase;
+  white-space: nowrap;
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* Sparkle burst around the card on reveal */
+@keyframes epSparkle {
+  0%   { transform: translate(-50%, -50%) rotate(0deg) scale(0.4); opacity: 0; }
+  20%  { opacity: 1; }
+  100% {
+    transform:
+      translate(
+        calc(-50% + cos(var(--ang)) * var(--dist)),
+        calc(-50% + sin(var(--ang)) * var(--dist))
+      )
+      rotate(180deg) scale(1);
+    opacity: 0;
+  }
+}
 </style>
 </head>
 <body>
@@ -834,6 +899,60 @@ window.addEventListener('resize',()=>{
 });
 
 init();
+
+// Visual-only: highlight extra-pick prize slots. Does not change game logic.
+(function () {
+  function spawnExtraPickSparkles(el) {
+    const rect = el.getBoundingClientRect();
+    const layer = document.createElement('div');
+    layer.style.cssText =
+      'position:fixed;left:' + (rect.left + rect.width / 2) +
+      'px;top:' + (rect.top + rect.height / 2) +
+      'px;width:0;height:0;pointer-events:none;z-index:100;';
+    document.body.appendChild(layer);
+    const N = 14;
+    for (let i = 0; i < N; i++) {
+      const s = document.createElement('span');
+      const angle = (360 / N) * i;
+      const dist = 70 + Math.random() * 40;
+      s.textContent = '✦';
+      s.style.cssText =
+        'position:absolute;left:0;top:0;' +
+        'font-size:' + (10 + Math.random() * 10) + 'px;' +
+        'color:#FFD65A;' +
+        'text-shadow:0 0 8px rgba(255,200,90,0.9),0 0 18px rgba(255,80,140,0.6);' +
+        'opacity:0;transform:translate(-50%,-50%);' +
+        'animation: epSparkle 900ms ease-out forwards;' +
+        'animation-delay:' + Math.floor(Math.random() * 120) + 'ms;' +
+        '--ang:' + angle + 'deg;--dist:' + dist + 'px;';
+      layer.appendChild(s);
+    }
+    setTimeout(function () { layer.remove(); }, 1400);
+  }
+
+  function markExtra(dotEl) {
+    if (!dotEl || dotEl.classList.contains('is-extra')) return;
+    dotEl.classList.add('is-extra');
+    if (!dotEl.querySelector('.extra-ribbon')) {
+      const r = document.createElement('span');
+      r.className = 'extra-ribbon';
+      r.textContent = '+ EXTRA PICK!';
+      dotEl.appendChild(r);
+    }
+    spawnExtraPickSparkles(dotEl);
+  }
+
+  const instructionEl = document.getElementById('instruction');
+  if (!instructionEl) return;
+  const obs = new MutationObserver(function () {
+    const msg = (instructionEl.textContent || '').toLowerCase();
+    if (!msg.includes('extra pick awarded')) return;
+    const filled = document.querySelectorAll('#dots .pick-dot.filled:not(.is-extra)');
+    const last = filled[filled.length - 1];
+    if (last) markExtra(last);
+  });
+  obs.observe(instructionEl, { childList: true, characterData: true, subtree: true });
+})();
 </script>
 </body>
 </html>
