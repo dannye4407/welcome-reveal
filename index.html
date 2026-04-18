@@ -1071,46 +1071,44 @@ init();
 (function () {
   let _ctx = null;
 
-  function unlock() {
-    if (!_ctx) {
-      try { _ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
-    }
-    // Play a zero-length silent buffer — required to unlock audio on iOS Safari
-    const buf = _ctx.createBuffer(1, 1, 22050);
-    const src = _ctx.createBufferSource();
-    src.buffer = buf;
-    src.connect(_ctx.destination);
-    src.start(0);
-    if (_ctx.state === 'suspended') _ctx.resume();
-  }
-  ['touchstart', 'touchend', 'click'].forEach(ev =>
-    document.addEventListener(ev, unlock, { once: true, passive: true })
-  );
-
+  // ctx() is always called from inside a user-gesture handler (tap/click on a card).
+  // Creating the AudioContext here and playing the silent unlock buffer in the same
+  // synchronous call satisfies iOS Safari's requirement that audio be started within
+  // the gesture that created the context.
   function ctx() {
     if (!_ctx) {
-      try { _ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+      try { _ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; }
+      // Silent 1-sample buffer: required to unlock Web Audio on iOS Safari
+      try {
+        const b = _ctx.createBuffer(1, 1, _ctx.sampleRate);
+        const s = _ctx.createBufferSource();
+        s.buffer = b; s.connect(_ctx.destination); s.start(0);
+      } catch (e) {}
     }
-    if (_ctx && _ctx.state === 'suspended') _ctx.resume();
+    if (_ctx.state === 'suspended') _ctx.resume();
     return _ctx;
   }
 
-  function tone(c, freq, type, startT, dur, peak) {
+  // Small positive offset so notes are never scheduled in the past when
+  // currentTime is 0 (freshly created context on iOS).
+  function now(c) { return c.currentTime + 0.05; }
+
+  function tone(c, freq, type, t, dur, peak) {
     const osc = c.createOscillator();
     const g = c.createGain();
     osc.type = type;
     osc.frequency.value = freq;
-    g.gain.setValueAtTime(0.001, startT);
-    g.gain.linearRampToValueAtTime(peak, startT + 0.025);
-    g.gain.exponentialRampToValueAtTime(0.001, startT + dur);
+    g.gain.setValueAtTime(0.001, t);
+    g.gain.linearRampToValueAtTime(peak, t + 0.025);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
     osc.connect(g); g.connect(c.destination);
-    osc.start(startT); osc.stop(startT + dur + 0.05);
+    osc.start(t); osc.stop(t + dur + 0.05);
   }
 
   window.SFX = {
-    // Quick filtered-noise whoosh when card lifts off
     cardWhoosh: function () {
       const c = ctx(); if (!c) return;
+      const t = now(c);
       const len = Math.floor(c.sampleRate * 0.14);
       const buf = c.createBuffer(1, len, c.sampleRate);
       const d = buf.getChannelData(0);
@@ -1119,61 +1117,54 @@ init();
       src.buffer = buf;
       const filt = c.createBiquadFilter();
       filt.type = 'bandpass';
-      filt.frequency.setValueAtTime(2800, c.currentTime);
-      filt.frequency.exponentialRampToValueAtTime(700, c.currentTime + 0.14);
+      filt.frequency.setValueAtTime(2800, t);
+      filt.frequency.exponentialRampToValueAtTime(700, t + 0.14);
       filt.Q.value = 1.2;
       const g = c.createGain(); g.gain.value = 0.22;
       src.connect(filt); filt.connect(g); g.connect(c.destination);
-      src.start();
+      src.start(t);
     },
 
-    // Rising chime when the card flips to reveal the prize
     cardReveal: function () {
       const c = ctx(); if (!c) return;
-      tone(c, 660,  'sine', c.currentTime,        0.38, 0.28);
-      tone(c, 990,  'sine', c.currentTime + 0.07, 0.42, 0.18);
-      tone(c, 1320, 'sine', c.currentTime + 0.14, 0.55, 0.12);
+      const t = now(c);
+      tone(c, 660,  'sine', t,        0.38, 0.28);
+      tone(c, 990,  'sine', t + 0.07, 0.42, 0.18);
+      tone(c, 1320, 'sine', t + 0.14, 0.55, 0.12);
     },
 
-    // Satisfying thud when card slots into the holding spot
     prizeLand: function () {
       const c = ctx(); if (!c) return;
+      const t = now(c);
       const osc = c.createOscillator();
       const g = c.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(220, c.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(65, c.currentTime + 0.15);
-      g.gain.setValueAtTime(0.45, c.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.2);
+      osc.frequency.setValueAtTime(220, t);
+      osc.frequency.exponentialRampToValueAtTime(65, t + 0.15);
+      g.gain.setValueAtTime(0.45, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
       osc.connect(g); g.connect(c.destination);
-      osc.start(); osc.stop(c.currentTime + 0.22);
+      osc.start(t); osc.stop(t + 0.22);
     },
 
-    // Ascending C-E-G-C fanfare for extra pick
     extraPick: function () {
       const c = ctx(); if (!c) return;
-      [[523.25, 0], [659.25, 0.13], [783.99, 0.26], [1046.5, 0.38]].forEach(([f, t]) => {
-        tone(c, f,     'sine',     c.currentTime + t, 0.38, 0.26);
-        tone(c, f * 2, 'triangle', c.currentTime + t, 0.22, 0.07);
+      const t = now(c);
+      [[523.25, 0], [659.25, 0.13], [783.99, 0.26], [1046.5, 0.38]].forEach(([f, dt]) => {
+        tone(c, f,     'sine',     t + dt, 0.38, 0.26);
+        tone(c, f * 2, 'triangle', t + dt, 0.22, 0.07);
       });
     },
 
-    // Full celebratory fanfare for the You've Won modal
     winFanfare: function () {
       const c = ctx(); if (!c) return;
-      // Rising run: C5 E5 G5 C6 E6
-      [[523.25, 0], [659.25, 0.1], [783.99, 0.2], [1046.5, 0.3], [1318.5, 0.42]].forEach(([f, t]) => {
-        tone(c, f,     'sine',     c.currentTime + t, 0.55, 0.22);
-        tone(c, f * 2, 'triangle', c.currentTime + t, 0.3,  0.06);
+      const t = now(c);
+      [[523.25, 0], [659.25, 0.1], [783.99, 0.2], [1046.5, 0.3], [1318.5, 0.42]].forEach(([f, dt]) => {
+        tone(c, f,     'sine',     t + dt, 0.55, 0.22);
+        tone(c, f * 2, 'triangle', t + dt, 0.3,  0.06);
       });
-      // Bright chord stab at the peak
-      [1046.5, 1318.5, 1568].forEach(f => {
-        tone(c, f, 'sine', c.currentTime + 0.55, 0.9, 0.18);
-      });
-      // Shimmer tail
-      [2093, 2637].forEach((f, i) => {
-        tone(c, f, 'sine', c.currentTime + 0.62 + i * 0.07, 0.6, 0.07);
-      });
+      [1046.5, 1318.5, 1568].forEach(f => tone(c, f, 'sine', t + 0.55, 0.9, 0.18));
+      [2093, 2637].forEach((f, i) => tone(c, f, 'sine', t + 0.62 + i * 0.07, 0.6, 0.07));
     }
   };
 })();
