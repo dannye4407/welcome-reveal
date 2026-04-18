@@ -865,13 +865,16 @@ function flyCardToDot(cardEl, prize, angle, dotEl, onComplete) {
 
   const targetX = dotRect.left + (dotRect.width - W) / 2;
   const targetY = dotRect.top + (dotRect.height - H) / 2;
+  const centerX = window.innerWidth  / 2 - W / 2;
+  const centerY = window.innerHeight / 2 - H / 2;
 
-  gsap.to(fly, {
-    x: targetX, y: targetY, rotation: 0, duration: 0.55, ease: "power3.inOut",
-    onComplete: () => { fly.remove(); if (onComplete) onComplete(); }
-  });
+  gsap.timeline()
+    .to(fly, { x: centerX, y: centerY, rotation: 0, scale: 1.75, duration: 0.4, ease: "power2.out" })
+    .to(fly, { duration: 0.85 })
+    .to(fly, { x: targetX, y: targetY, scale: 1, duration: 0.4, ease: "power2.inOut",
+               onComplete: () => { fly.remove(); if (onComplete) onComplete(); } });
 
-  setTimeout(() => { inner.style.transform = "rotateY(180deg)"; }, 200);
+  setTimeout(() => { inner.style.transform = "rotateY(180deg)"; }, 150);
 }
 
 function liftCard(cardEl,angle){
@@ -906,7 +909,7 @@ function pickCard(cardEl, prize, angle) {
     if (picksRemaining <= 0) {
       gameOver = true;
       setInstruction("All done! See your prizes below.");
-      setTimeout(showWinModal, 1400);
+      setTimeout(showWinModal, 700);
     } else {
       setInstruction(prize.extra
         ? `Extra pick awarded! ${picksRemaining} pick${picksRemaining > 1 ? "s" : ""} remaining — choose your next card.`
