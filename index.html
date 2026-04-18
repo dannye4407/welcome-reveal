@@ -868,13 +868,15 @@ function flyCardToDot(cardEl, prize, angle, dotEl, onComplete) {
   const centerX = window.innerWidth  / 2 - W / 2;
   const centerY = window.innerHeight / 2 - H / 2;
 
+  window.SFX && window.SFX.cardWhoosh();
+
   gsap.timeline()
     .to(fly, { x: centerX, y: centerY, rotation: 0, scale: 1.75, duration: 0.4, ease: "power2.out" })
     .to(fly, { duration: 0.85 })
     .to(fly, { x: targetX, y: targetY, scale: 1, duration: 0.4, ease: "power2.inOut",
-               onComplete: () => { fly.remove(); if (onComplete) onComplete(); } });
+               onComplete: () => { window.SFX && window.SFX.prizeLand(); fly.remove(); if (onComplete) onComplete(); } });
 
-  setTimeout(() => { inner.style.transform = "rotateY(180deg)"; }, 150);
+  setTimeout(() => { inner.style.transform = "rotateY(180deg)"; window.SFX && window.SFX.cardReveal(); }, 150);
 }
 
 function liftCard(cardEl,angle){
@@ -1010,6 +1012,7 @@ init();
       dotEl.appendChild(r);
     }
     spawnExtraPickSparkles(dotEl);
+    window.SFX && window.SFX.extraPick();
   }
 
   const instructionEl = document.getElementById('instruction');
@@ -1058,6 +1061,82 @@ init();
     });
     obs.observe(instr, { childList: true, characterData: true, subtree: true });
   }
+})();
+
+// Synthesized sound effects via Web Audio API
+(function () {
+  let _ctx = null;
+  function ctx() {
+    if (!_ctx) {
+      try { _ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+    }
+    if (_ctx && _ctx.state === 'suspended') _ctx.resume();
+    return _ctx;
+  }
+
+  function tone(c, freq, type, startT, dur, peak) {
+    const osc = c.createOscillator();
+    const g = c.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.001, startT);
+    g.gain.linearRampToValueAtTime(peak, startT + 0.025);
+    g.gain.exponentialRampToValueAtTime(0.001, startT + dur);
+    osc.connect(g); g.connect(c.destination);
+    osc.start(startT); osc.stop(startT + dur + 0.05);
+  }
+
+  window.SFX = {
+    // Quick filtered-noise whoosh when card lifts off
+    cardWhoosh: function () {
+      const c = ctx(); if (!c) return;
+      const len = Math.floor(c.sampleRate * 0.14);
+      const buf = c.createBuffer(1, len, c.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 1.8);
+      const src = c.createBufferSource();
+      src.buffer = buf;
+      const filt = c.createBiquadFilter();
+      filt.type = 'bandpass';
+      filt.frequency.setValueAtTime(2800, c.currentTime);
+      filt.frequency.exponentialRampToValueAtTime(700, c.currentTime + 0.14);
+      filt.Q.value = 1.2;
+      const g = c.createGain(); g.gain.value = 0.22;
+      src.connect(filt); filt.connect(g); g.connect(c.destination);
+      src.start();
+    },
+
+    // Rising chime when the card flips to reveal the prize
+    cardReveal: function () {
+      const c = ctx(); if (!c) return;
+      tone(c, 660,  'sine', c.currentTime,        0.38, 0.28);
+      tone(c, 990,  'sine', c.currentTime + 0.07, 0.42, 0.18);
+      tone(c, 1320, 'sine', c.currentTime + 0.14, 0.55, 0.12);
+    },
+
+    // Satisfying thud when card slots into the holding spot
+    prizeLand: function () {
+      const c = ctx(); if (!c) return;
+      const osc = c.createOscillator();
+      const g = c.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(220, c.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(65, c.currentTime + 0.15);
+      g.gain.setValueAtTime(0.45, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.2);
+      osc.connect(g); g.connect(c.destination);
+      osc.start(); osc.stop(c.currentTime + 0.22);
+    },
+
+    // Ascending C-E-G-C fanfare for extra pick
+    extraPick: function () {
+      const c = ctx(); if (!c) return;
+      [[523.25, 0], [659.25, 0.13], [783.99, 0.26], [1046.5, 0.38]].forEach(([f, t]) => {
+        tone(c, f,     'sine',     c.currentTime + t, 0.38, 0.26);
+        tone(c, f * 2, 'triangle', c.currentTime + t, 0.22, 0.07);
+      });
+    }
+  };
 })();
 </script>
 </body>
