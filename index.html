@@ -1071,27 +1071,29 @@ init();
 (function () {
   let _ctx = null;
 
-  // ctx() is always called from inside a user-gesture handler (tap/click on a card).
-  // Creating the AudioContext here and playing the silent unlock buffer in the same
-  // synchronous call satisfies iOS Safari's requirement that audio be started within
-  // the gesture that created the context.
-  function ctx() {
+  // ensureRunning(cb) creates the AudioContext on first call (always inside a
+  // user-gesture handler), plays a silent buffer to satisfy older iOS Safari's
+  // requirement, calls resume(), then invokes cb(ctx) only once the context is
+  // confirmed running — avoiding the race where src.start() fires on a still-
+  // suspended context and gets silently dropped by iOS.
+  function ensureRunning(cb) {
     if (!_ctx) {
-      try { _ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; }
-      // Silent 1-sample buffer: required to unlock Web Audio on iOS Safari
+      try {
+        _ctx = new (window.AudioContext || window.webkitAudioContext)();
+      } catch (e) { return; }
+      // Silent 1-sample buffer — marks context as user-activated on older iOS
       try {
         const b = _ctx.createBuffer(1, 1, _ctx.sampleRate);
         const s = _ctx.createBufferSource();
-        s.buffer = b; s.connect(_ctx.destination); s.start(0);
+        s.buffer = b; s.connect(_ctx.destination); s.start();
       } catch (e) {}
     }
-    if (_ctx.state === 'suspended') _ctx.resume();
-    return _ctx;
+    if (_ctx.state === 'running') {
+      cb(_ctx);
+    } else {
+      _ctx.resume().then(function () { if (_ctx.state === 'running') cb(_ctx); });
+    }
   }
-
-  // Small positive offset so notes are never scheduled in the past when
-  // currentTime is 0 (freshly created context on iOS).
-  function now(c) { return c.currentTime + 0.05; }
 
   function tone(c, freq, type, t, dur, peak) {
     const osc = c.createOscillator();
@@ -1107,64 +1109,69 @@ init();
 
   window.SFX = {
     cardWhoosh: function () {
-      const c = ctx(); if (!c) return;
-      const t = now(c);
-      const len = Math.floor(c.sampleRate * 0.14);
-      const buf = c.createBuffer(1, len, c.sampleRate);
-      const d = buf.getChannelData(0);
-      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 1.8);
-      const src = c.createBufferSource();
-      src.buffer = buf;
-      const filt = c.createBiquadFilter();
-      filt.type = 'bandpass';
-      filt.frequency.setValueAtTime(2800, t);
-      filt.frequency.exponentialRampToValueAtTime(700, t + 0.14);
-      filt.Q.value = 1.2;
-      const g = c.createGain(); g.gain.value = 0.22;
-      src.connect(filt); filt.connect(g); g.connect(c.destination);
-      src.start(t);
+      ensureRunning(function (c) {
+        const t = c.currentTime + 0.05;
+        const len = Math.floor(c.sampleRate * 0.14);
+        const buf = c.createBuffer(1, len, c.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 1.8);
+        const src = c.createBufferSource();
+        src.buffer = buf;
+        const filt = c.createBiquadFilter();
+        filt.type = 'bandpass';
+        filt.frequency.setValueAtTime(2800, t);
+        filt.frequency.exponentialRampToValueAtTime(700, t + 0.14);
+        filt.Q.value = 1.2;
+        const g = c.createGain(); g.gain.value = 0.22;
+        src.connect(filt); filt.connect(g); g.connect(c.destination);
+        src.start(t);
+      });
     },
 
     cardReveal: function () {
-      const c = ctx(); if (!c) return;
-      const t = now(c);
-      tone(c, 660,  'sine', t,        0.38, 0.28);
-      tone(c, 990,  'sine', t + 0.07, 0.42, 0.18);
-      tone(c, 1320, 'sine', t + 0.14, 0.55, 0.12);
+      ensureRunning(function (c) {
+        const t = c.currentTime + 0.05;
+        tone(c, 660,  'sine', t,        0.38, 0.28);
+        tone(c, 990,  'sine', t + 0.07, 0.42, 0.18);
+        tone(c, 1320, 'sine', t + 0.14, 0.55, 0.12);
+      });
     },
 
     prizeLand: function () {
-      const c = ctx(); if (!c) return;
-      const t = now(c);
-      const osc = c.createOscillator();
-      const g = c.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(220, t);
-      osc.frequency.exponentialRampToValueAtTime(65, t + 0.15);
-      g.gain.setValueAtTime(0.45, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-      osc.connect(g); g.connect(c.destination);
-      osc.start(t); osc.stop(t + 0.22);
+      ensureRunning(function (c) {
+        const t = c.currentTime + 0.05;
+        const osc = c.createOscillator();
+        const g = c.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(220, t);
+        osc.frequency.exponentialRampToValueAtTime(65, t + 0.15);
+        g.gain.setValueAtTime(0.45, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+        osc.connect(g); g.connect(c.destination);
+        osc.start(t); osc.stop(t + 0.22);
+      });
     },
 
     extraPick: function () {
-      const c = ctx(); if (!c) return;
-      const t = now(c);
-      [[523.25, 0], [659.25, 0.13], [783.99, 0.26], [1046.5, 0.38]].forEach(([f, dt]) => {
-        tone(c, f,     'sine',     t + dt, 0.38, 0.26);
-        tone(c, f * 2, 'triangle', t + dt, 0.22, 0.07);
+      ensureRunning(function (c) {
+        const t = c.currentTime + 0.05;
+        [[523.25, 0], [659.25, 0.13], [783.99, 0.26], [1046.5, 0.38]].forEach(function (pair) {
+          tone(c, pair[0],       'sine',     t + pair[1], 0.38, 0.26);
+          tone(c, pair[0] * 2,  'triangle', t + pair[1], 0.22, 0.07);
+        });
       });
     },
 
     winFanfare: function () {
-      const c = ctx(); if (!c) return;
-      const t = now(c);
-      [[523.25, 0], [659.25, 0.1], [783.99, 0.2], [1046.5, 0.3], [1318.5, 0.42]].forEach(([f, dt]) => {
-        tone(c, f,     'sine',     t + dt, 0.55, 0.22);
-        tone(c, f * 2, 'triangle', t + dt, 0.3,  0.06);
+      ensureRunning(function (c) {
+        const t = c.currentTime + 0.05;
+        [[523.25, 0], [659.25, 0.1], [783.99, 0.2], [1046.5, 0.3], [1318.5, 0.42]].forEach(function (pair) {
+          tone(c, pair[0],      'sine',     t + pair[1], 0.55, 0.22);
+          tone(c, pair[0] * 2, 'triangle', t + pair[1], 0.3,  0.06);
+        });
+        [1046.5, 1318.5, 1568].forEach(function (f) { tone(c, f, 'sine', t + 0.55, 0.9, 0.18); });
+        [2093, 2637].forEach(function (f, i) { tone(c, f, 'sine', t + 0.62 + i * 0.07, 0.6, 0.07); });
       });
-      [1046.5, 1318.5, 1568].forEach(f => tone(c, f, 'sine', t + 0.55, 0.9, 0.18));
-      [2093, 2637].forEach((f, i) => tone(c, f, 'sine', t + 0.62 + i * 0.07, 0.6, 0.07));
     }
   };
 })();
